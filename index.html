@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Про улитку</title>
+<style>
+html,body{height:100%;margin:0;background:#EFE5D0;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+[hidden]{display:none!important}
+#scene{display:block;width:100%;height:100%;touch-action:manipulation}
+#dev{position:fixed;left:0;right:0;bottom:0;display:none;gap:8px;flex-wrap:wrap;align-items:center;
+  padding:10px calc(10px + env(safe-area-inset-left,0px));background:rgba(255,252,245,.94);
+  border-top:1px solid #E0D5C0;font:600 14px system-ui,sans-serif;color:#3A3330}
+body.dev #dev{display:flex}
+#dev button{font:800 14px system-ui,sans-serif;color:#4A2B10;background:#FBD79A;border:1.5px solid #D79A3F;
+  border-radius:999px;padding:9px 16px;cursor:pointer;min-height:42px}
+#dev button.off{background:transparent;border-color:#D8CDB8;color:#8A7E70}
+#dev span{color:#8A7E70;font-weight:600}
+</style>
+</head>
+<body>
+<svg id="scene" viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg"
+     role="img" aria-label="Улитка на деревянной скамейке среди цветов, справа лежит зелёный листочек">
+  <defs>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="3" seed="4"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5" intercept="0.25"/></feComponentTransfer>
+    </filter>
+    <filter id="pencil" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.048" numOctaves="4" seed="9" result="t"/>
+      <feDisplacementMap in="SourceGraphic" in2="t" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <radialGradient id="shellFill" cx="34%" cy="28%" r="78%">
+      <stop offset="0%" stop-color="#FCD28C"/><stop offset="45%" stop-color="#F29A3E"/><stop offset="100%" stop-color="#DE7524"/>
+    </radialGradient>
+    <radialGradient id="bodyFill" cx="38%" cy="26%" r="86%">
+      <stop offset="0%" stop-color="#8FE0D2"/><stop offset="100%" stop-color="#55BFAE"/>
+    </radialGradient>
+    <path id="footPath" d="M-182,-14 C-197,-35 -176,-53 -148,-50 C-100,-44 -42,-48 8,-56 C58,-64 108,-80 138,-108 C149,-119 170,-119 178,-104 C193,-79 197,-43 176,-21 C159,-3 129,5 95,5 L-140,5 C-168,5 -176,-2 -182,-14 Z"/>
+    <clipPath id="footClip"><use href="#footPath"/></clipPath>
+  </defs>
+
+  <rect width="1000" height="640" fill="#EFE5D0"/>
+  <g id="wood"></g>
+
+  <g id="art" filter="url(#pencil)">
+    <g id="flora"></g>
+
+    <g id="leafG">
+      <path id="leafShape" d="M812,528 C836,470 908,448 958,470 C952,538 886,578 834,560 C818,554 808,542 812,528 Z" fill="#7CC03E" stroke="#44821F" stroke-width="3"/>
+      <path d="M818,532 C860,516 912,492 952,474" fill="none" stroke="#44821F" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M840,528 C846,512 848,498 846,486 M868,516 C876,500 880,486 879,474 M898,500 C906,486 912,472 912,462" fill="none" stroke="#4E8F25" stroke-width="1.6" opacity=".75" stroke-linecap="round"/>
+    </g>
+
+    <g id="snailWrap" transform="translate(330,480)">
+      <ellipse cx="-10" cy="12" rx="205" ry="24" fill="#C3A484" opacity=".3"/>
+      <g id="trail" opacity=".55"></g>
+
+      <g id="bodyG">
+        <use href="#footPath" fill="url(#bodyFill)" stroke="#3FA895" stroke-width="3"/>
+        <ellipse cx="152" cy="-92" rx="58" ry="54" fill="url(#bodyFill)" stroke="#3FA895" stroke-width="3"/>
+        <ellipse cx="152" cy="-92" rx="58" ry="54" fill="url(#bodyFill)"/>
+        <g clip-path="url(#footClip)"><g id="speckles"></g></g>
+        <path d="M12,-46 l22,18 M34,-46 l-22,18 M56,-44 l20,17 M76,-44 l-20,17" stroke="#2E8E7E" stroke-width="3.4" stroke-linecap="round" fill="none" opacity=".8"/>
+        <ellipse cx="116" cy="-66" rx="19" ry="11" fill="#F58F8B" opacity=".5"/>
+        <ellipse cx="203" cy="-56" rx="14" ry="9" fill="#F58F8B" opacity=".45"/>
+
+        <g id="horns">
+          <path class="horn" d="M118,-140 C108,-181 113,-213 128,-229" fill="none" stroke="#3FA895" stroke-width="5" stroke-linecap="round"/>
+          <path class="horn" d="M170,-146 C179,-187 197,-207 215,-215" fill="none" stroke="#3FA895" stroke-width="5" stroke-linecap="round"/>
+          <circle class="bulb" cx="128" cy="-229" r="10" fill="#3FA895"/>
+          <circle class="bulb" cx="215" cy="-215" r="10" fill="#3FA895"/>
+        </g>
+
+        <g id="asleep">
+          <path d="M124,-112 q18,20 36,0" fill="none" stroke="#2A2724" stroke-width="4" stroke-linecap="round"/>
+          <path d="M174,-92 q18,20 36,0" fill="none" stroke="#2A2724" stroke-width="4" stroke-linecap="round"/>
+          <path d="M126,-120 l-9,-8 M142,-124 l-3,-11 M158,-121 l6,-10" stroke="#2A2724" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M176,-100 l-9,-8 M192,-104 l-3,-11 M208,-101 l6,-10" stroke="#2A2724" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <text id="zzz" x="236" y="-168" font-family="Comfortaa,system-ui,sans-serif" font-size="34" font-weight="700" fill="#8FB7C9">z z z</text>
+        </g>
+
+        <g id="awake" hidden>
+          <circle cx="142" cy="-112" r="30" fill="#FFFDF8" stroke="#2A2724" stroke-width="3"/>
+          <circle cx="190" cy="-92" r="30" fill="#FFFDF8" stroke="#2A2724" stroke-width="3"/>
+          <circle cx="147" cy="-110" r="19" fill="#F2A277"/>
+          <circle cx="195" cy="-90" r="19" fill="#F2A277"/>
+          <circle cx="150" cy="-109" r="13" fill="#231F1C"/>
+          <circle cx="198" cy="-89" r="13" fill="#231F1C"/>
+          <circle cx="145" cy="-114" r="4.5" fill="#FFFDF8"/>
+          <circle cx="193" cy="-94" r="4.5" fill="#FFFDF8"/>
+          <path d="M124,-132 l-8,-10 M140,-139 l-2,-12 M157,-137 l6,-11" stroke="#2A2724" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M172,-112 l-8,-10 M188,-119 l-2,-12 M205,-117 l6,-11" stroke="#2A2724" stroke-width="3" stroke-linecap="round" fill="none"/>
+          <path d="M152,-62 q10,11 22,1" fill="none" stroke="#2A2724" stroke-width="3.4" stroke-linecap="round"/>
+        </g>
+      </g>
+
+      <g id="shell" transform="translate(-30,-120)">
+        <circle r="118" fill="url(#shellFill)"/>
+        <g id="shellDetail"></g>
+        <circle r="118" fill="none" stroke="#8E3A12" stroke-width="3.6"/>
+      </g>
+      <g id="fx"></g>
+    </g>
+    <g id="ants"></g>
+  </g>
+
+  <rect id="grainLayer" width="1000" height="640" filter="url(#grain)" style="mix-blend-mode:multiply" opacity=".22"/>
+</svg>
+
+<div id="dev">
+  <button id="knock">Тук-тук-тук</button>
+  <button id="crawl">Ползёт</button>
+  <button id="reset">Заново</button>
+  <button id="tGrain">Зерно</button>
+  <button id="tPencil">Дрожание</button>
+  <span id="hint"></span>
+</div>
+
+<script src="src/draw.js"></script>
+<script src="src/snail.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

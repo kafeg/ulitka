@@ -74,15 +74,20 @@ var Hint = (function () {
     }
 
     if (kind === 'hold') {
-      const ring = el(stageG, 'circle', { cx: CX, cy: CY - 6, r: 30, fill: 'none', stroke: '#E6D9BE', 'stroke-width': 6 });
-      const fill = el(stageG, 'circle', { cx: CX, cy: CY - 6, r: 30, fill: 'none', stroke: '#E8873A', 'stroke-width': 6,
-        'stroke-linecap': 'round', 'stroke-dasharray': 189, 'stroke-dashoffset': 189, transform: `rotate(-90 ${CX} ${CY - 6})` });
-      A(fill, [{ strokeDashoffset: 189 }, { strokeDashoffset: 0, offset: .75 }, { strokeDashoffset: 0 }],
+      // Рядом с пальцем — сам зонт: ребёнок видит не только жест, но и зачем он.
+      const um = Props.umbrella(stageG);
+      um.setAttribute('opacity', 1);
+      um.setAttribute('transform', `translate(${CX - 104} ${CY + 4}) scale(0.26)`);
+      const HX = CX + 74;
+      const ring = el(stageG, 'circle', { cx: HX, cy: CY - 6, r: 28, fill: 'none', stroke: '#E6D9BE', 'stroke-width': 6 });
+      const fill = el(stageG, 'circle', { cx: HX, cy: CY - 6, r: 28, fill: 'none', stroke: '#E8873A', 'stroke-width': 6,
+        'stroke-linecap': 'round', 'stroke-dasharray': 176, 'stroke-dashoffset': 176, transform: `rotate(-90 ${HX} ${CY - 6})` });
+      A(fill, [{ strokeDashoffset: 176 }, { strokeDashoffset: 0, offset: .75 }, { strokeDashoffset: 0 }],
         { duration: 2600, iterations: Infinity });
-      const h = el(stageG, 'g', { transform: `translate(${CX} ${CY - 10})` });
-      handGlyph(h, .92);
-      A(h, [{ transform: `translate(${CX}px,${CY - 34}px)` }, { transform: `translate(${CX}px,${CY - 14}px)`, offset: .12 },
-            { transform: `translate(${CX}px,${CY - 14}px)` }], { duration: 2600, iterations: Infinity, easing: 'ease-out' });
+      const h = el(stageG, 'g', { transform: `translate(${HX} ${CY - 34})` });
+      handGlyph(h, .9);
+      A(h, [{ transform: `translate(${HX}px,${CY - 34}px)` }, { transform: `translate(${HX}px,${CY - 14}px)`, offset: .12 },
+            { transform: `translate(${HX}px,${CY - 14}px)` }], { duration: 2600, iterations: Infinity, easing: 'ease-out' });
     }
 
     if (kind === 'path') {

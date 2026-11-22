@@ -64,28 +64,36 @@ var Game = (function () {
       it.gone = true; left--;
       Sound.sweep();
       Props.sparkle(propsG, it.x, it.y, 5);
-      it.node.animate([{ transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
-                       { transform: `translate(${U.rnd(-200, 200).toFixed(0)}px,-520px) rotate(${U.rnd(-280, 280).toFixed(0)}deg)`, opacity: 0 }],
-        { duration: 680, easing: 'ease-out', fill: 'forwards' });
-      if (left <= 0) { disarm(); setTimeout(done, 420); } else progress();
+      const dx = U.rnd(-130, 150).toFixed(0), rot = U.rnd(-200, 200).toFixed(0);
+      it.node.animate([
+        { transform: 'translate(0,0) rotate(0deg) scale(1)', opacity: 1 },
+        { transform: 'translate(0,-26px) rotate(0deg) scale(1.16)', opacity: 1, offset: .16 },
+        { transform: `translate(${dx}px,-420px) rotate(${rot}deg) scale(.65)`, opacity: 0 }],
+        { duration: 1250, easing: 'cubic-bezier(.16,.72,.36,1)', fill: 'forwards' });
+      if (left <= 0) { disarm(); setTimeout(done, 1000); } else progress();
     };
     const hit = p => items.forEach(it => { if (!it.gone && dist(it.x, it.y, p.wx, p.y) < it.r) fling(it); });
-    arm({ kind: 'sweep', hint, move: hit, down: hit, solve() { items.forEach((it, i) => setTimeout(() => fling(it), i * 200)); } });
+    arm({ kind: 'sweep', hint, move: hit, down: hit, solve() { items.forEach((it, i) => setTimeout(() => fling(it), i * 430)); } });
   }
 
   function holdOver(target, ms, done, hint) {
-    let t = 0;
-    const palm = parts.palm;
-    const stop = () => { clearTimeout(t); t = 0; palm.setAttribute('opacity', 0); };
+    let t = 0, sp = 0, last = null;
+    const um = parts.umbrella;
+    const stop = () => { clearTimeout(t); clearInterval(sp); t = 0; sp = 0; um.setAttribute('opacity', 0); };
     const near = p => dist(target().x, target().y, p.x, p.y) < 300;
+    const put = p => { last = p; um.setAttribute('transform', `translate(${p.x} ${p.y})`); };
     arm({
       kind: 'hold', hint,
       down(p) {
-        palm.setAttribute('transform', `translate(${p.x} ${p.y})`);
-        palm.setAttribute('opacity', 1);
-        if (near(p)) t = setTimeout(() => { stop(); disarm(); done(); }, ms);
+        put(p); um.setAttribute('opacity', 1);
+        if (!near(p)) return;
+        t = setTimeout(() => { stop(); disarm(); done(); }, ms);
+        sp = setInterval(() => {
+          const a = U.rnd(-2.7, -0.45);
+          Props.splash(weatherG, last.x + Math.cos(a) * 128, last.y - 56 + Math.sin(a) * 128);
+        }, 230);
       },
-      move(p) { palm.setAttribute('transform', `translate(${p.x} ${p.y})`); if (!near(p) && t) stop(); },
+      move(p) { put(p); if (!near(p) && t) stop(); },
       up: stop,
       solve() { stop(); done(); }
     });
@@ -143,7 +151,7 @@ var Game = (function () {
       { duration: 900, fill: 'forwards' });
     setTimeout(() => {
       parts.rain = Props.rain(weatherG);
-      weatherG.appendChild(parts.palm);
+      weatherG.appendChild(parts.umbrella);   // зонт должен быть поверх дождя
       Snail.shiver(true);
       const drip = setInterval(() => Sound.drop(Math.random() * 3), 430);
       holdOver(headScreen, 1500, () => {
@@ -180,23 +188,20 @@ var Game = (function () {
     say('Выглянуло солнце. Посчитай лучи: один, два, три.');
     parts.sun = Props.sun(weatherG);
     parts.sun.node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, fill: 'forwards' });
-    const rays = parts.sun.rays;
     let lit = 0;
     const light = () => {
-      const i = rays.findIndex(r => !r.dataset.on);
-      if (i < 0) return;
-      rays[i].dataset.on = '1'; lit++;
-      rays[i].animate([{ opacity: .75 }, { opacity: 1 }], { duration: 350, fill: 'forwards' });
-      rays[i].setAttribute('fill', '#FFC94A');
-      const t = parts.sun.tapAt(i);
-      Props.sparkle(weatherG, t.x, t.y, 7);
-      Sound.shine(lit - 1); Snail.pop(['ОДИН', 'ДВА', 'ТРИ'][lit - 1], '#C8870F');
+      if (lit >= 3) return;
+      parts.sun.light(lit);
+      const t = parts.sun.tapAt(lit);
+      Props.sparkle(weatherG, t.x, t.y, 9);
+      Sound.shine(lit); Snail.pop(['ОДИН', 'ДВА', 'ТРИ'][lit], '#C8870F');
+      lit++;
     };
     arm({
       kind: 'tap3',
-      hint: () => { const i = rays.findIndex(r => !r.dataset.on); return i < 0 ? null : parts.sun.tapAt(i); },
+      hint: () => lit < 3 ? parts.sun.tapAt(lit) : null,
       down() { light(); if (lit >= 3) { disarm(); finish(); } else progress(); },
-      solve() { const run = () => { light(); if (lit < 3) setTimeout(run, 600); else finish(); }; run(); }
+      solve() { const run = () => { light(); if (lit < 3) setTimeout(run, 750); else finish(); }; run(); }
     });
     function finish() {
       Sound.cheer();
@@ -273,7 +278,7 @@ var Game = (function () {
     parts = {};
     parts.leaf = Props.leaf(propsG, STOP.leaf + OFF.leaf);
     parts.debris = Props.debris(propsG, STOP.debris + OFF.debris);
-    parts.palm = Props.palm(weatherG);
+    parts.umbrella = Props.umbrella(weatherG);
   }
 
   function reset() { disarm(); step = 0; busy = false; build(); Snail.reset(); follow(Snail.x); }

@@ -61,8 +61,11 @@ var Props = (function () {
   function leaf(g, x) {
     const q = el(g, 'g', {}), y = B() - 20;
     const id = 'lm' + Math.random().toString(36).slice(2, 8);
-    const mask = el(q, 'mask', { id, maskUnits: 'userSpaceOnUse' });
-    const cover = el(mask, 'rect', { x: x - 80, y: y - 200, width: 400, height: 320, fill: '#FFFFFF' });
+    // ВАЖНО: без явных x/y/width/height область маски считается от вьюпорта,
+    // и предмет в глубине мира пропадает целиком. Задаём её по месту листочка.
+    const mask = el(q, 'mask', { id, maskUnits: 'userSpaceOnUse',
+      x: x - 120, y: y - 240, width: 480, height: 420 });
+    el(mask, 'rect', { x: x - 120, y: y - 240, width: 480, height: 420, fill: '#FFFFFF' });
     const inner = el(q, 'g', { mask: `url(#${id})` });
     const W = `M${x},${y} C${x + 34},${y - 86} ${x + 140},${y - 118} ${x + 212},${y - 86} C${x + 204},${y + 12} ${x + 108},${y + 50} ${x + 32},${y + 24} C${x + 8},${y + 16} ${x - 6},${y - 2} ${x},${y} Z`;
     el(inner, 'path', { d: W, fill: '#7CC03E', stroke: '#44821F', 'stroke-width': 4 });
@@ -123,38 +126,98 @@ var Props = (function () {
     return { node: q, drops };
   }
 
-  // Раскрытая ладошка, которой ребёнок укрывает улитку от дождя.
-  // Четыре пальца и отставленный большой — силуэт должен быть однозначным.
-  function palm(g) {
+  // Зонтик, которым ребёнок укрывает улитку от дождя.
+  // Ладошка в таком размере читалась плохо; зонт понятен сразу и выглядит нарядно.
+  function umbrella(g) {
     const q = el(g, 'g', { opacity: 0, 'pointer-events': 'none' });
-    const SK = { fill: '#FFE1CC', stroke: '#C2795A', 'stroke-width': 4.5, 'stroke-linejoin': 'round' };
-    [[-54, -96, -14], [-20, -112, -5], [16, -110, 5], [50, -94, 15]].forEach(f =>
-      el(q, 'rect', Object.assign({ x: f[0], y: f[1], width: 32, height: 104, rx: 16,
-        transform: `rotate(${f[2]} ${f[0] + 16} ${f[1] + 90})` }, SK)));
-    el(q, 'rect', Object.assign({ x: -116, y: -34, width: 34, height: 74, rx: 17, transform: 'rotate(-42 -99 0)' }, SK));
-    el(q, 'rect', Object.assign({ x: -74, y: -34, width: 148, height: 96, rx: 42 }, SK));
+    const R = 182, SEG = 6, CY = -86;
+    el(q, 'path', { d: `M0,${CY} L0,${CY + 150} q0,34 -34,34 q-26,0 -32,-20`, fill: 'none',
+      stroke: '#8A5629', 'stroke-width': 13, 'stroke-linecap': 'round' });
+    for (let i = 0; i < SEG; i++) {
+      const a0 = Math.PI + i * Math.PI / SEG, a1 = Math.PI + (i + 1) * Math.PI / SEG;
+      const x0 = Math.cos(a0) * R, y0 = CY + Math.sin(a0) * R;
+      const x1 = Math.cos(a1) * R, y1 = CY + Math.sin(a1) * R;
+      el(q, 'path', { d: `M0,${CY} L${x0.toFixed(1)},${y0.toFixed(1)} Q${((x0 + x1) / 2 * 1.1).toFixed(1)},${((y0 + y1) / 2 - CY) * 1.1 + CY + 26} ${x1.toFixed(1)},${y1.toFixed(1)} Z`,
+        fill: i % 2 ? '#ED5C7A' : '#FFF4E2', stroke: '#B83350', 'stroke-width': 3.5, 'stroke-linejoin': 'round' });
+    }
+    el(q, 'path', { d: `M0,${CY - 6} L0,${CY - 34}`, stroke: '#8A5629', 'stroke-width': 9, 'stroke-linecap': 'round' });
+    el(q, 'circle', { cx: 0, cy: CY - 36, r: 7, fill: '#8A5629' });
+    el(q, 'circle', { cx: 0, cy: CY, r: 9, fill: '#B83350' });
     return q;
   }
 
-  // Солнце крупное и в полосе неба; лучи идут в зону действия, где их ничто не закрывает.
+  // Брызги по куполу: видно, что зонт действительно ловит капли.
+  function splash(g, x, y) {
+    const a = rnd(-2.6, -0.5);
+    for (let i = 0; i < 3; i++) {
+      const d = el(g, 'circle', { cx: x, cy: y, r: rnd(3, 6).toFixed(1), fill: '#79C6DE', opacity: .9 });
+      const dx = Math.cos(a + rnd(-.5, .5)) * rnd(24, 54), dy = Math.sin(a + rnd(-.5, .5)) * rnd(20, 46);
+      d.animate([{ transform: 'translate(0,0)', opacity: .9 },
+                 { transform: `translate(${dx.toFixed(0)}px,${dy.toFixed(0)}px)`, opacity: 0 }],
+        { duration: 480, easing: 'ease-out' }).onfinish = () => d.remove();
+    }
+  }
+
+  // Солнце: тёплый ореол, медленно вращающаяся корона из коротких лучей
+  // и ТРИ длинных луча до сиденья — те самые, которые ребёнок считает.
+  // На конце каждого — светящаяся точка: видно, куда тапать.
   function sun(g) {
-    const q = el(g, 'g', { opacity: 0 }), rays = [], SX = 720, SY = 84, R = 62;
-    const A = [2.16, 1.79, 1.37], L = 380;
+    const q = el(g, 'g', { opacity: 0 }), SX = 716, SY = 106, R = 58;
+    const A = [2.16, 1.79, 1.37], L = 372;
+    const px = (a, r) => SX + Math.cos(a) * r, py = (a, r) => SY + Math.sin(a) * r;
+
+    [[2.5, .10], [2.0, .16], [1.55, .24]].forEach(h =>
+      el(q, 'circle', { cx: SX, cy: SY, r: (R * h[0]).toFixed(0), fill: '#FFD83D', opacity: h[1] }));
+
+    const corona = el(q, 'g', {});
+    for (let i = 0; i < 18; i++) {
+      const a = i * Math.PI * 2 / 18, lg = i % 2 ? 18 : 32;
+      el(corona, 'path', { d: `M${px(a, R + 4).toFixed(1)},${py(a, R + 4).toFixed(1)} L${px(a, R + 4 + lg).toFixed(1)},${py(a, R + 4 + lg).toFixed(1)}`,
+        stroke: '#FFC94A', 'stroke-width': i % 2 ? 7 : 10, 'stroke-linecap': 'round', opacity: .9 });
+    }
+    corona.animate([{ transform: `rotate(0deg)` }, { transform: `rotate(360deg)` }],
+      { duration: 60000, iterations: Infinity, easing: 'linear', composite: 'replace' });
+    corona.style.transformOrigin = `${SX}px ${SY}px`;
+
+    const rays = [], dots = [];
     A.forEach((a, i) => {
-      const p = (ang, r) => `${(SX + Math.cos(ang) * r).toFixed(0)},${(SY + Math.sin(ang) * r).toFixed(0)}`;
-      rays.push(el(q, 'path', {
-        d: `M${p(a - .07, R)} L${p(a - .17, L)} L${p(a + .17, L)} L${p(a + .07, R)} Z`,
-        fill: '#FFE07A', opacity: .85, stroke: '#E0A63A', 'stroke-width': 3, 'data-ray': i
-      }));
+      const d = `M${px(a, R + 10).toFixed(1)},${py(a, R + 10).toFixed(1)} L${px(a, L).toFixed(1)},${py(a, L).toFixed(1)}`;
+      const g2 = el(q, 'g', { 'data-ray': i });
+      el(g2, 'path', { d, stroke: '#FFE7A8', 'stroke-width': 34, 'stroke-linecap': 'round', opacity: .5, class: 'rayWide' });
+      el(g2, 'path', { d, stroke: '#FFD055', 'stroke-width': 14, 'stroke-linecap': 'round', opacity: .55, class: 'rayCore' });
+      rays.push(g2);
+      const t = el(q, 'g', { transform: `translate(${px(a, L).toFixed(1)} ${py(a, L).toFixed(1)})` });
+      el(t, 'circle', { r: 30, fill: '#FFD83D', opacity: .28 });
+      el(t, 'circle', { r: 19, fill: '#FFF0B8', stroke: '#E0A63A', 'stroke-width': 4 });
+      t.animate([{ transform: `translate(${px(a, L).toFixed(1)}px,${py(a, L).toFixed(1)}px) scale(1)` },
+                 { transform: `translate(${px(a, L).toFixed(1)}px,${py(a, L).toFixed(1)}px) scale(1.18)` }],
+        { duration: 1100, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
+      dots.push(t);
     });
+
     const face = el(q, 'g', {});
     el(face, 'circle', { cx: SX, cy: SY, r: R, fill: '#FFD83D', stroke: '#E0A020', 'stroke-width': 3 });
-    el(face, 'circle', { cx: SX - 20, cy: SY - 9, r: 8, fill: '#3A3023' });
-    el(face, 'circle', { cx: SX + 20, cy: SY - 9, r: 8, fill: '#3A3023' });
-    el(face, 'ellipse', { cx: SX - 31, cy: SY + 11, rx: 11, ry: 7, fill: '#F79A8C', opacity: .6 });
-    el(face, 'ellipse', { cx: SX + 31, cy: SY + 11, rx: 11, ry: 7, fill: '#F79A8C', opacity: .6 });
-    el(face, 'path', { d: `M${SX - 19},${SY + 17} q19,20 38,0`, fill: 'none', stroke: '#3A3023', 'stroke-width': 5, 'stroke-linecap': 'round' });
-    return { node: q, rays, tapAt: i => ({ x: SX + Math.cos(A[i]) * 260, y: SY + Math.sin(A[i]) * 260 }) };
+    el(face, 'circle', { cx: SX - 18, cy: SY - 22, r: R * .42, fill: '#FFE780', opacity: .7 });
+    el(face, 'circle', { cx: SX - 19, cy: SY - 8, r: 8, fill: '#3A3023' });
+    el(face, 'circle', { cx: SX + 19, cy: SY - 8, r: 8, fill: '#3A3023' });
+    el(face, 'circle', { cx: SX - 16, cy: SY - 11, r: 2.6, fill: '#FFFDF8' });
+    el(face, 'circle', { cx: SX + 22, cy: SY - 11, r: 2.6, fill: '#FFFDF8' });
+    el(face, 'ellipse', { cx: SX - 30, cy: SY + 12, rx: 11, ry: 7, fill: '#F79A8C', opacity: .65 });
+    el(face, 'ellipse', { cx: SX + 30, cy: SY + 12, rx: 11, ry: 7, fill: '#F79A8C', opacity: .65 });
+    el(face, 'path', { d: `M${SX - 18},${SY + 16} q18,20 36,0`, fill: 'none', stroke: '#3A3023', 'stroke-width': 5, 'stroke-linecap': 'round' });
+
+    function light(i) {
+      rays[i].querySelector('.rayWide').animate([{ opacity: .5 }, { opacity: .9 }], { duration: 400, fill: 'forwards' });
+      const core = rays[i].querySelector('.rayCore');
+      core.setAttribute('stroke', '#FFB82E');
+      core.animate([{ opacity: .55, strokeWidth: 14 }, { opacity: 1, strokeWidth: 22 }], { duration: 400, fill: 'forwards' });
+      dots[i].getAnimations().forEach(a => a.cancel());
+      dots[i].animate([{ opacity: 1, transform: dots[i].getAttribute('transform').replace(/translate\(([^ ]+) ([^)]+)\)/, 'translate($1px,$2px)') + ' scale(1)' },
+                       { opacity: 0, transform: dots[i].getAttribute('transform').replace(/translate\(([^ ]+) ([^)]+)\)/, 'translate($1px,$2px)') + ' scale(2.2)' }],
+        { duration: 450, easing: 'ease-out', fill: 'forwards' });
+    }
+
+    return { node: q, count: 3, light, tapAt: i => ({ x: px(A[i], L), y: py(A[i], L) }) };
   }
 
   function sparkle(g, x, y, n) {
@@ -178,5 +241,5 @@ var Props = (function () {
     }
   }
 
-  return { debris, branch, leaf, antSwarm, clouds, rain, palm, sun, sparkle, crumbs };
+  return { debris, branch, leaf, antSwarm, clouds, rain, umbrella, splash, sun, sparkle, crumbs };
 })();

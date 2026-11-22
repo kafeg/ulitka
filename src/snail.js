@@ -1,31 +1,35 @@
-// Snail — состояние улитки: спит -> стук -> проснулась -> три отрезка пути -> листочек.
-// Проиграть нельзя: любое действие либо продвигает, либо ничего не делает.
+// Snail — улитка как актёр: позиция в мире, голова наружу или в домике, ползание.
+// Никакой логики сцен здесь нет, ею занимается Game.
 var Snail = (function () {
   const $ = id => document.getElementById(id);
-  const KNOCKS_TO_WAKE = 3, STEPS = 3, STEP_PX = 100, START_X = 330, START_Y = 480;
+  // У SVG-элементов нет свойства hidden (оно живёт на HTMLElement), поэтому только атрибутом.
+  const vis = (n, on) => on ? n.removeAttribute('hidden') : n.setAttribute('hidden', '');
+  const Y = 470, HO = 'translate(110px,-70px)', HI = 'translate(-110px,70px)';
 
-  let wrap, fx, horns, hornPaths, bulbs, asleep, awake, shell, leaf, zzz;
-  let knocks = 0, isAwake = false, step = 0, moving = false, onHint = () => {};
-  const motionOK = matchMedia('(prefers-reduced-motion: no-preference)').matches;
+  let wrap, body, head, shell, horns, hornPaths, bulbs, asleep, awake, zzzG, fx;
+  let X = 330, out = false, onMove = () => {};
+  const slow = !matchMedia('(prefers-reduced-motion: no-preference)').matches;
 
-  const LEAF_WHOLE = 'M812,528 C836,470 908,448 958,470 C952,538 886,578 834,560 C818,554 808,542 812,528 Z';
-  const LEAF_BITTEN = 'M812,528 C836,470 908,448 958,470 C954,500 938,524 916,540 C912,516 896,506 878,512 C862,518 856,538 862,556 C852,562 842,563 834,560 C818,554 808,542 812,528 Z';
-  const NEAR = ['Листочек ещё так далеко…', 'Листочек стал ближе.', 'Листочек уже совсем близко!'];
-
-  function init(hintFn) {
-    onHint = hintFn || onHint;
-    wrap = $('snailWrap'); fx = $('fx'); horns = $('horns'); shell = $('shell');
-    asleep = $('asleep'); awake = $('awake'); leaf = $('leafShape'); zzz = $('zzz');
+  function init(moveCb) {
+    onMove = moveCb || onMove;
+    wrap = $('snailWrap'); body = $('bodyG'); head = $('head'); shell = $('shell');
+    horns = $('horns'); asleep = $('asleep'); awake = $('awake'); zzzG = $('zzz'); fx = $('fx');
     hornPaths = [...document.querySelectorAll('.horn')];
     bulbs = [...document.querySelectorAll('.bulb')];
     hornPaths.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
     bulbs.forEach(b => { b.style.opacity = 0; });
     shell.style.cursor = 'pointer';
-    shell.addEventListener('pointerdown', knock);
-    reset();
+    place(X, Y);
   }
 
-  function bump() {
+  let curY = Y;
+  function place(x, y) {
+    curY = (y === undefined ? Y : y);
+    wrap.setAttribute('transform', `translate(${x.toFixed(1)},${curY.toFixed(1)})`);
+    onMove(x);
+  }
+
+  function knockShake() {
     shell.animate([
       { transform: 'translate(-30px,-120px) rotate(0deg)' },
       { transform: 'translate(-30px,-123px) rotate(-3deg)' },
@@ -34,67 +38,114 @@ var Snail = (function () {
     ], { duration: 380, easing: 'ease-out' });
   }
 
-  function knock() {
-    bump();
-    if (isAwake) return;
-    knocks++;
-    const ring = U.el(fx, 'circle', { cx: -30, cy: -120, r: 60, fill: 'none', stroke: '#B0491A', 'stroke-width': 5, opacity: .8 });
-    ring.animate([{ r: 60, opacity: .8 }, { r: 170, opacity: 0 }], { duration: 620, easing: 'ease-out' }).onfinish = () => ring.remove();
-    const t = U.el(fx, 'text', { x: -36 + knocks * 14, y: -262, 'font-family': 'system-ui,sans-serif',
-      'font-size': 40, 'font-weight': 700, fill: '#B0491A', 'text-anchor': 'middle' });
-    t.textContent = 'ТУК!';
-    t.animate([
-      { transform: 'translateY(14px) scale(.6)', opacity: 0 },
-      { transform: 'translateY(0) scale(1)', opacity: 1, offset: .3 },
-      { transform: 'translateY(-26px) scale(1)', opacity: 0 }
-    ], { duration: 900, easing: 'ease-out' }).onfinish = () => t.remove();
-    onHint(knocks < KNOCKS_TO_WAKE ? 'Ещё ' + (KNOCKS_TO_WAKE - knocks) + '…' : '');
-    if (knocks >= KNOCKS_TO_WAKE) wake();
+  function ring() {
+    const r = U.el(fx, 'circle', { cx: -30, cy: -120, r: 60, fill: 'none', stroke: '#B0491A', 'stroke-width': 5, opacity: .8 });
+    r.animate([{ r: 60, opacity: .8 }, { r: 170, opacity: 0 }], { duration: 620, easing: 'ease-out' }).onfinish = () => r.remove();
   }
 
-  function wake() {
-    isAwake = true;
-    asleep.hidden = true; awake.hidden = false;
+  function pop(text, color) {
+    const t = U.el(fx, 'text', { x: -30, y: -270, 'font-family': 'system-ui,sans-serif', 'font-size': 46,
+      'font-weight': 700, fill: color || '#B0491A', 'text-anchor': 'middle' });
+    t.textContent = text;
+    t.animate([{ transform: 'translateY(16px) scale(.5)', opacity: 0 },
+               { transform: 'translateY(0) scale(1)', opacity: 1, offset: .3 },
+               { transform: 'translateY(-30px) scale(1)', opacity: 0 }],
+      { duration: 1000, easing: 'ease-out' }).onfinish = () => t.remove();
+  }
+
+  function wakeUp(cb) {
+    out = true;
+    vis(asleep, false); vis(awake, true); zzzG.setAttribute('opacity', 0);
     hornPaths.forEach((p, i) => p.animate([{ strokeDashoffset: p.getTotalLength() }, { strokeDashoffset: 0 }],
       { duration: 700, delay: i * 130, easing: 'cubic-bezier(.2,1.4,.5,1)', fill: 'forwards' }));
     bulbs.forEach((b, i) => b.animate([{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(1)' }],
       { duration: 420, delay: 620 + i * 130, easing: 'cubic-bezier(.2,1.6,.5,1)', fill: 'forwards' }));
-    onHint('Проснулась и хочет кушать.');
+    setTimeout(() => cb && cb(), 900);
   }
 
-  function crawl() {
-    if (!isAwake || moving || step >= STEPS) return;
-    moving = true; step++;
-    const from = START_X + (step - 1) * STEP_PX, to = START_X + step * STEP_PX, k = [];
-    for (let i = 0; i <= 8; i++)
-      k.push({ transform: `translate(${(from + (to - from) * i / 8).toFixed(1)}px, ${i % 2 ? -4 : 0}px)` });
-    wrap.animate(k, { duration: motionOK ? 1700 : 300, easing: 'linear', fill: 'forwards' }).onfinish = () => {
-      moving = false;
-      if (step < STEPS) onHint(NEAR[step - 1]); else eat();
-    };
+  // Спрятаться в домик — не бегство, а способ переждать страшное. Так в книжке.
+  function hide(cb) {
+    if (!out) { cb && cb(); return; }
+    out = false;
+    head.animate([{ transform: `${HO} scale(1) ${HI}`, opacity: 1 },
+                  { transform: `${HO} scale(.12) ${HI}`, opacity: 0 }],
+      { duration: 420, easing: 'ease-in', fill: 'forwards' }).onfinish = () => cb && cb();
   }
 
-  function eat() {
-    leaf.setAttribute('d', LEAF_BITTEN);
-    awake.hidden = true; asleep.hidden = false;
-    zzz.setAttribute('opacity', '1');
+  function peek(cb) {
+    if (out) { cb && cb(); return; }
+    out = true;
+    head.animate([{ transform: `${HO} scale(.12) ${HI}`, opacity: 0 },
+                  { transform: `${HO} scale(1) ${HI}`, opacity: 1 }],
+      { duration: 520, easing: 'cubic-bezier(.2,1.4,.5,1)', fill: 'forwards' }).onfinish = () => cb && cb();
+  }
+
+  function crawlTo(tx, cb) {
+    const x0 = X, dist = Math.abs(tx - x0), dur = slow ? 400 : Math.max(700, dist * 7);
+    const t0 = performance.now();
+    (function step(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      X = x0 + (tx - x0) * p;
+      place(X, Y + (p < 1 ? Math.sin(p * Math.PI * 2 * 7) * 3 : 0));
+      body.style.transform = p < 1 ? `scaleX(${(1 + Math.sin(p * Math.PI * 2 * 7) * 0.025).toFixed(3)})` : '';
+      if (p < 1) requestAnimationFrame(step); else { X = tx; place(X, Y); cb && cb(); }
+    })(performance.now());
+  }
+
+  function jumpTo(x, y) { X = x; place(X, y); }
+
+  // Переезд в произвольную точку (ветка): через rAF, а не WAAPI,
+  // чтобы камера шла ровно за улиткой и X не расходился с картинкой.
+  function moveTo(tx, ty, dur, cb) {
+    const x0 = X, y0 = curY, t0 = performance.now();
+    (function st(now) {
+      const p = Math.min(1, (now - t0) / (slow ? 120 : dur));
+      const e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      X = x0 + (tx - x0) * e;
+      place(X, y0 + (ty - y0) * e);
+      if (p < 1) requestAnimationFrame(st); else { X = tx; place(X, ty); cb && cb(); }
+    })(performance.now());
+  }
+
+  function shiver(on) {
+    if (!on) { body.getAnimations().forEach(a => a.cancel()); return; }
+    body.animate([{ transform: 'translateX(-2px)' }, { transform: 'translateX(2px)' }],
+      { duration: 90, direction: 'alternate', iterations: Infinity });
+  }
+
+  function yawn(cb) {
+    const m = document.getElementById('mouth');
+    m.animate([{ d: 'path("M152,-62 q10,11 22,1")' }, { d: 'path("M150,-66 q12,26 26,2")' }, { d: 'path("M152,-62 q10,11 22,1")' }],
+      { duration: 1200, easing: 'ease-in-out' });
+    Sound.yawn();
+    setTimeout(() => cb && cb(), 1200);
+  }
+
+  function sleep() {
+    out = false;
+    vis(awake, false); vis(asleep, true); zzzG.setAttribute('opacity', 1);
+    head.getAnimations().forEach(a => a.cancel());
+    head.style.transform = ''; head.style.opacity = '';
     hornPaths.forEach(p => p.animate([{ strokeDashoffset: 0 }, { strokeDashoffset: p.getTotalLength() }],
       { duration: 500, easing: 'ease-in', fill: 'forwards' }));
     bulbs.forEach(b => b.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }));
-    onHint('Улитка наелась и уснула. Домик всегда с тобой.');
   }
 
   function reset() {
-    knocks = 0; isAwake = false; step = 0; moving = false;
+    X = 330; out = false;
     wrap.getAnimations().forEach(a => a.cancel());
-    wrap.setAttribute('transform', `translate(${START_X},${START_Y})`);
-    asleep.hidden = false; awake.hidden = true;
-    zzz.setAttribute('opacity', '1');
+    head.getAnimations().forEach(a => a.cancel());
+    head.style.transform = ''; head.style.opacity = '';
+    body.style.transform = ''; shiver(false);
+    vis(asleep, true); vis(awake, false); zzzG.setAttribute('opacity', 1);
     hornPaths.forEach(p => { p.getAnimations().forEach(a => a.cancel()); p.style.strokeDashoffset = p.getTotalLength(); });
     bulbs.forEach(b => { b.getAnimations().forEach(a => a.cancel()); b.style.opacity = 0; });
-    leaf.setAttribute('d', LEAF_WHOLE);
-    onHint('Постучись в домик.');
+    U.clear(fx);
+    place(X, Y);
   }
 
-  return { init, knock, crawl, reset };
+  return {
+    init, reset, place, jumpTo, moveTo, knockShake, ring, pop, wakeUp, hide, peek, crawlTo, shiver, yawn, sleep,
+    get x() { return X; }, get out() { return out; }, get node() { return wrap; }
+  };
 })();

@@ -1,26 +1,32 @@
-// U — процедурная отрисовка декораций. Всё рисуется кодом, растровых ассетов нет.
+// U — процедурная отрисовка. Всё рисуется кодом, растровых ассетов нет.
+// Статичные декорации дрожат «по построению» (wob): фильтр feDisplacementMap висит
+// только на улитке, иначе пришлось бы фильтровать всю скамейку шириной 3000.
 var U = (function () {
   const NS = 'http://www.w3.org/2000/svg';
   const el = (p, n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
   const rnd = (a, b) => a + Math.random() * (b - a);
   const pick = a => a[Math.floor(Math.random() * a.length)];
+  const wob = (v, m) => (v + rnd(-(m || 1.6), m || 1.6)).toFixed(1);
+  const clear = g => { while (g.firstChild) g.removeChild(g.firstChild); };
 
-  function wood(g) {
-    [182, 432, 662, 884].forEach(x =>
-      el(g, 'path', { d: `M${x} 0 Q${x + rnd(-7, 7)} 320 ${x + rnd(-7, 7)} 640`, fill: 'none', stroke: '#DCCBA8', 'stroke-width': 1.8, opacity: .6 }));
-    for (let i = 0; i < 230; i++) {
-      const x = rnd(0, 1000), y = rnd(-120, 400), h = rnd(220, 700);
+  function wood(g, W) {
+    for (let x = 182; x < W; x += 250)
+      el(g, 'path', { d: `M${x} -700 Q${wob(x, 7)} 320 ${wob(x, 7)} 1340`, fill: 'none', stroke: '#DCCBA8', 'stroke-width': 1.8, opacity: .6 });
+    const n = Math.round(W / 3);
+    for (let i = 0; i < n; i++) {
+      const x = rnd(0, W), y = rnd(-700, 1000), h = rnd(220, 900);
       el(g, 'path', { d: `M${x.toFixed(0)} ${y.toFixed(0)} q${rnd(-5, 5).toFixed(1)} ${(h / 2).toFixed(0)} 0 ${h.toFixed(0)}`,
         fill: 'none', stroke: pick(['#E3D4B4', '#E8DCC2', '#DCCBA8']), 'stroke-width': rnd(.5, 1.4).toFixed(1),
         opacity: rnd(.16, .46).toFixed(2), 'stroke-linecap': 'round' });
     }
-    [[96, 86, 13], [742, 120, 11], [560, 586, 10]].forEach(k => {
-      for (let r = k[2]; r > 2; r -= 3.4)
-        el(g, 'ellipse', { cx: k[0], cy: k[1], rx: r, ry: r * .62, fill: 'none', stroke: '#D2BE99', 'stroke-width': 1.3, opacity: .75 });
-    });
+    for (let x = 90; x < W; x += rnd(420, 760)) {
+      const cy = rnd(-560, 1200), cx = x;
+      for (let r = rnd(8, 14); r > 2; r -= 3.4)
+        el(g, 'ellipse', { cx, cy, rx: r.toFixed(1), ry: (r * .62).toFixed(1), fill: 'none', stroke: '#D2BE99', 'stroke-width': 1.3, opacity: .75 });
+    }
   }
 
-  // Спираль Архимеда + радиальные рёбра роста — так ракушка читается как рисунок карандашом.
+  // Спираль Архимеда + радиальные рёбра роста — ракушка читается как рисунок карандашом.
   function shell(g) {
     const SX = 11, SY = 6;
     for (let i = 0; i < 26; i++) {
@@ -51,7 +57,7 @@ var U = (function () {
   function daisy(g, x, y, r, n, col, edge, rot) {
     const q = el(g, 'g', {});
     for (let i = 0; i < n; i++)
-      el(q, 'ellipse', { cx: x, cy: y - r * .62, rx: (r * .27).toFixed(1), ry: (r * .54).toFixed(1), fill: col,
+      el(q, 'ellipse', { cx: wob(x), cy: wob(y - r * .62), rx: (r * .27).toFixed(1), ry: (r * .54).toFixed(1), fill: col,
         stroke: edge, 'stroke-width': 1.4, transform: `rotate(${(rot + i * 360 / n).toFixed(1)} ${x} ${y})` });
     el(q, 'circle', { cx: x, cy: y, r: (r * .3).toFixed(1), fill: '#302924' });
     for (let i = 0; i < 7; i++) {
@@ -66,7 +72,7 @@ var U = (function () {
     const q = el(g, 'g', {}), cx = (x + x2) / 2, cy = (y + y2) / 2 - 46;
     el(q, 'path', { d: `M${x} ${y} Q${cx} ${cy} ${x2} ${y2}`, fill: 'none', stroke: '#3E6FA8', 'stroke-width': 2.6, 'stroke-linecap': 'round' });
     for (let i = 1; i <= n; i++) {
-      const t = i / (n + 1), mx = bez(t, x, cx, x2).toFixed(1), my = bez(t, y, cy, y2).toFixed(1);
+      const t = i / (n + 1), mx = wob(bez(t, x, cx, x2)), my = wob(bez(t, y, cy, y2));
       el(q, 'path', { d: `M${mx} ${my} l-11 -15 M${mx} ${my} l0 -19 M${mx} ${my} l11 -15`,
         fill: 'none', stroke: '#6B4FC4', 'stroke-width': 4.4, 'stroke-linecap': 'round', transform: `rotate(${rnd(-30, 30).toFixed(0)} ${mx} ${my})` });
     }
@@ -77,21 +83,27 @@ var U = (function () {
     el(q, 'path', { d: `M${x} ${y} Q${cx} ${cy} ${x2} ${y2}`, fill: 'none', stroke: col, 'stroke-width': 2.4, 'stroke-linecap': 'round' });
     for (let i = 1; i <= n; i++) {
       const t = i / (n + 1), mx = bez(t, x, cx, x2), my = bez(t, y, cy, y2), s = i % 2 ? 1 : -1;
-      el(q, 'ellipse', { cx: mx.toFixed(1), cy: (my - 13 * s).toFixed(1), rx: 7.5, ry: 14, fill: col,
+      el(q, 'ellipse', { cx: wob(mx), cy: wob(my - 13 * s), rx: 7.5, ry: 14, fill: col,
         transform: `rotate(${(s * 34 + rnd(-10, 10)).toFixed(0)} ${mx.toFixed(1)} ${(my - 13 * s).toFixed(1)})` });
     }
   }
 
-  function flora(g) {
-    sprigLav(g, 46, 232, 312, 96, 6); sprigLav(g, 104, 146, 268, 44, 5); sprigLav(g, 690, 52, 944, 152, 6);
-    sprigLeaf(g, 34, 178, 250, 214, 7, '#2F7D3A'); sprigLeaf(g, 118, 54, 312, 168, 6, '#4D9B3E');
-    sprigLeaf(g, 640, 150, 896, 56, 7, '#2F7D3A'); sprigLeaf(g, 748, 480, 952, 606, 5, '#3E8A3A');
-    daisy(g, 166, 124, 44, 6, '#ED5C7A', '#C33655', 12); daisy(g, 258, 188, 37, 6, '#ED5C7A', '#C33655', 28);
-    daisy(g, 92, 92, 30, 6, '#F0758D', '#C33655', 40); daisy(g, 798, 96, 40, 6, '#ED5C7A', '#C33655', 18);
-    daisy(g, 886, 180, 30, 6, '#F0758D', '#C33655', 5);
-    daisy(g, 318, 116, 15, 7, '#FFFDF5', '#D9CDB4', 0); daisy(g, 58, 262, 13, 7, '#FFFDF5', '#D9CDB4', 20);
-    daisy(g, 944, 108, 14, 7, '#FFFDF5', '#D9CDB4', 10);
-    daisy(g, 706, 586, 16, 6, '#6FA8DC', '#3E6FA8', 0); daisy(g, 762, 612, 13, 6, '#6FA8DC', '#3E6FA8', 24);
+  // Флора раскидана по всей длине скамейки: сверху густо, снизу редко, середина свободна под улитку.
+  function flora(g, W) {
+    const PINK = ['#ED5C7A', '#F0758D'], GREEN = ['#2F7D3A', '#4D9B3E', '#3E8A3A'];
+    for (let x = 0; x < W; x += 500) {
+      sprigLav(g, x + 46, 232, x + 312, 96, 6);
+      sprigLav(g, x + 290, 60, x + 470, 150, 5);
+      sprigLeaf(g, x + 34, 178, x + 250, 214, 7, pick(GREEN));
+      sprigLeaf(g, x + 240, 150, x + 470, 56, 7, pick(GREEN));
+      daisy(g, x + 166, 124, rnd(34, 46), 6, pick(PINK), '#C33655', rnd(0, 60));
+      daisy(g, x + 358, 180, rnd(26, 38), 6, pick(PINK), '#C33655', rnd(0, 60));
+      daisy(g, x + 318, 116, 15, 7, '#FFFDF5', '#D9CDB4', rnd(0, 60));
+      if (x % 1000 === 0) {
+        sprigLeaf(g, x + 120, 500, x + 340, 612, 5, pick(GREEN));
+        daisy(g, x + 206, 592, 16, 6, '#6FA8DC', '#3E6FA8', rnd(0, 60));
+      }
+    }
   }
 
   function ant(g, x, y, s, rot) {
@@ -104,9 +116,8 @@ var U = (function () {
     el(q, 'ellipse', { cx: -10, cy: 0, rx: 7.5, ry: 5.8, fill: c });
     el(q, 'ellipse', { cx: 0, cy: 0, rx: 4.2, ry: 3.8, fill: c });
     el(q, 'ellipse', { cx: 9, cy: -1, rx: 5.8, ry: 5.2, fill: c });
+    return q;
   }
 
-  function ants(g) { ant(g, 690, 548, 1.05, 8); ant(g, 628, 596, .85, -14); }
-
-  return { el, rnd, pick, wood, shell, speckles, trail, flora, ants, ant, daisy };
+  return { NS, el, rnd, pick, wob, clear, bez, wood, shell, speckles, trail, flora, daisy, sprigLav, sprigLeaf, ant };
 })();
